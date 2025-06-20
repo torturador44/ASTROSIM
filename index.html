@@ -48,10 +48,21 @@
       color: black;
       transform: scale(1.05);
     }
+      #logo {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 120px;
+      height: auto;
+      z-index: 2;
+      filter: drop-shadow(0 0 4px #000);
+    }
+
   </style>
 </head>
 <body>
   <canvas id="starfield"></canvas>
+  <img src="logo.png" id="logo">
   <h1>Bienvenido a AstroSim</h1>
   <button class="menu-button" onclick="location.href='transito.html'">🔭 Método de Tránsito</button>
   <button class="menu-button" onclick="location.href='espectroscopia.html'">💨 Espectroscopía de Transmisión</button>
