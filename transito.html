@@ -162,11 +162,12 @@
 
 
       // planeta
-      ctxOrbit.fillStyle = '#aaa';
+      ctxOrbit.fillStyle = '#000'; // completamente negro
       ctxOrbit.beginPath();
       ctxOrbit.arc(cx + planetX*SCALE, cy, R_PLANET*SCALE, 0, 2*Math.PI);
       ctxOrbit.fill();
-      ctxOrbit.strokeStyle = '#333';
+      // puedes quitar el borde o dejarlo si quieres un contorno sutil
+      ctxOrbit.strokeStyle = '#000'; 
       ctxOrbit.stroke();
     }
 
