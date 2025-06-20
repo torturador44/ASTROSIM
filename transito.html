@@ -127,6 +127,8 @@
 
     function drawSystem() {
       ctxOrbit.clearRect(0, 0, orbitCanvas.width, orbitCanvas.height);
+      requestAnimationFrame(drawSystem);
+
 
       // fondo estrellado
       stars.forEach(s => {
@@ -139,11 +141,25 @@
       const cx = orbitCanvas.width / 2;
       const cy = orbitCanvas.height / 2;
 
-      // estrella
-      ctxOrbit.fillStyle = 'gold';
+      // estrella animada con efecto de plasma
+      const steps = 100;
+      const now = Date.now() / 2000;
       ctxOrbit.beginPath();
-      ctxOrbit.arc(cx, cy, starPx, 0, 2*Math.PI);
+      for (let i = 0; i <= steps; i++) {
+        const angle = (i / steps) * 2 * Math.PI;
+        const rMod = 1 + 0.03 * Math.sin(60 * angle + now); // distorsión
+        const r = starPx * rMod;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        if (i === 0) ctxOrbit.moveTo(x, y);
+        else ctxOrbit.lineTo(x, y);
+      }
+      ctxOrbit.closePath();
+      ctxOrbit.fillStyle = 'gold';
       ctxOrbit.fill();
+      ctxOrbit.strokeStyle = 'orange';
+      ctxOrbit.stroke();
+
 
       // planeta
       ctxOrbit.fillStyle = '#aaa';
