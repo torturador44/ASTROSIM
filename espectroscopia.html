@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador de Espectroscopía de Transmisión</title>
+  <style>
+    :root{--bg:#000;--fg:#fff;--accent:#00e0ff}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+    h1{margin:20px 0;text-align:center}
+    #wrapper{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;max-width:1200px;width:100%;}
+    canvas,img{border:1px solid #555;border-radius:8px;background:#111}
+    #specCanvas{width:500px;height:280px}
+    #cellCanvas{width:500px;height:500px}
+    #controls{width:90%;max-width:1100px;margin-top:20px;text-align:center}
+    input[type=range]{width:60%}
+    #gasText{margin-top:10px;font-size:1.1rem;color:var(--accent)}
+  </style>
+</head>
+<body>
+  <h1>Simulador de Espectroscopía de Transmisión</h1>
+  <div id="wrapper">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <canvas id="specCanvas" width="500" height="280"></canvas>
+      <div id="controls">
+        <label for="lambdaSlider">λ (μm): <span id="lambdaLabel">0.55</span></label><br>
+        <input type="range" id="lambdaSlider" min="0.38" max="0.75" step="0.001" value="0.55">
+        <div id="gasText"></div>
+      </div>
+    </div>
+    <canvas id="cellCanvas" width="500" height="500"></canvas>
+  </div>
+
+  <script>
+  // ----------- Configuración y datos científicos -----------
+  const LAM_MIN = 0.38, LAM_MAX = 0.75;
+  const PEAK_WIDTH = 0.03;
+  const AMP_MIN = 0.005, AMP_MAX = 0.12;
+  const N_MOLECULES = 80;
+  const CELL_SIZE = 1.0; // unidades lógicas
+
+  // Líneas de absorción (μm)
+  const ABS_LINES = {
+    "O₂":  [0.245, 0.630, 0.760],
+    "O₃":  [0.255],
+    "Na":  [0.589],
+    "K":   [0.770],
+    "H₂O": [0.94, 1.13, 1.40, 1.90, 2.70],
+    "CH₄": [1.70, 2.30, 3.30],
+    "CO₂": [1.44, 1.60, 2.00, 4.26],
+    "CO":  [2.35, 4.60],
+    "N₂O": [4.50]
+  };
+
+  // Absorption strength = suma de gaussianas
+  function absorptionStrength(lam){
+    let s = 0;
+    for(const cs of Object.values(ABS_LINES)){
+      for(const c of cs){
+        s += Math.exp(-0.5 * ((lam - c) / PEAK_WIDTH)**2);
+      }
+    }
+    return s;
+  }
+
+  // Pre‑calcular máximo para normalizar amplitud
+  let maxStrength = 0;
+  for(let l=0.2; l<=5.0; l+=0.002){ maxStrength = Math.max(maxStrength, absorptionStrength(l)); }
+
+  function ampFromLambda(lam){
+    return AMP_MIN + (AMP_MAX-AMP_MIN)*(absorptionStrength(lam)/maxStrength);
+  }
+
+  function currentAbsorbers(lam, tol=0.04){
+    const gases=[];
+    for(const [g,cs] of Object.entries(ABS_LINES)){
+      if(cs.some(c=>Math.abs(lam-c)<tol)) gases.push(g);
+    }
+    return gases;
+  }
+
+  // Wavelength → RGB (aprox)
+  function wavelengthToRGB(l){
+    let t=(l-0.38)/(0.75-0.38); t=Math.min(1,Math.max(0,t));
+    const r=t;
+    const g=Math.max(0,1-4*Math.abs(t-0.5));
+    const b=1-t;
+    return `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+  }
+
+  // ---------- Canvas del espectro ----------
+  const specCanvas=document.getElementById('specCanvas');
+  const sctx=specCanvas.getContext('2d');
+  const specImg=new Image();
+  specImg.src='espectro.jpg'; // asegúrate de tener la imagen en la misma carpeta
+  specImg.onload=()=>{ drawSpectrum(); updateSpectralLine(currentLambda); };
+
+  function drawSpectrum(){
+    // Dibujar fondo negro y la imagen (rota 180º via translate+rotate)
+    sctx.save();
+    sctx.fillStyle='#000';
+    sctx.fillRect(0,0,specCanvas.width,specCanvas.height);
+    // Dibujar imagen completa adaptada al canvas
+    //sctx.translate(specCanvas.width, specCanvas.height); // mover origen
+    //sctx.rotate(Math.PI); // 180°
+    sctx.drawImage(specImg, 0,0, specCanvas.width, specCanvas.height);
+    sctx.restore();
+  }
+
+  function updateSpectralLine(lam){
+    drawSpectrum();
+    const x=((lam-LAM_MIN)/(LAM_MAX-LAM_MIN))*specCanvas.width;
+    sctx.strokeStyle=wavelengthToRGB(lam);
+    sctx.lineWidth=2;
+    sctx.setLineDash([6,4]);
+    sctx.beginPath();
+    sctx.moveTo(x,0);
+    sctx.lineTo(x,specCanvas.height);
+    sctx.stroke();
+  }
+
+  // ---------- Canvas de moléculas ----------
+  const cellCanvas=document.getElementById('cellCanvas');
+  const cctx=cellCanvas.getContext('2d');
+  const basePositions=[...Array(N_MOLECULES)].map(()=>({x:Math.random()*CELL_SIZE,y:Math.random()*CELL_SIZE}));
+
+  function drawMolecules(lam){
+    const amp=ampFromLambda(lam);
+    cctx.clearRect(0,0,cellCanvas.width,cellCanvas.height);
+    cctx.fillStyle='#111'; cctx.fillRect(0,0,cellCanvas.width,cellCanvas.height);
+    const radius=8;
+    for(const b of basePositions){
+      const jitterX=(Math.random()*2-1)*amp;
+      const jitterY=(Math.random()*2-1)*amp;
+      const xi=(b.x+jitterX);
+      const yi=(b.y+jitterY);
+      // convert to pixels
+      const px=xi*cellCanvas.width;
+      const py=yi*cellCanvas.height;
+      cctx.fillStyle='#ffd65a';
+      cctx.beginPath();
+      cctx.arc(px,py,radius,0,2*Math.PI);
+      cctx.fill();
+      cctx.strokeStyle='#ff9f40';
+      cctx.stroke();
+    }
+  }
+
+  // ---------- UI y animación ----------
+  const slider=document.getElementById('lambdaSlider');
+  const lambdaLabel=document.getElementById('lambdaLabel');
+  const gasText=document.getElementById('gasText');
+  let currentLambda=parseFloat(slider.value);
+
+  function onLambdaChange(val){
+    currentLambda=parseFloat(val);
+    lambdaLabel.textContent=currentLambda.toFixed(3);
+    updateSpectralLine(currentLambda);
+    const gases=currentAbsorbers(currentLambda);
+    gasText.textContent=gases.length?`Absorben: ${gases.join(', ')}`:'Sin absorción fuerte';
+  }
+  slider.addEventListener('input', e=>onLambdaChange(e.target.value));
+
+  function loop(){
+    drawMolecules(currentLambda);
+    requestAnimationFrame(loop);
+  }
+
+  onLambdaChange(currentLambda);
+  loop();
+  </script>
+</body>
+</html>
