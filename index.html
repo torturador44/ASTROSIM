@@ -2,179 +2,94 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Simulador de Tránsito Exoplanetario</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AstroSim Web</title>
   <style>
-    :root{--bg:#000;--fg:#fff;--accent:#0af}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center}
-    h1{margin:20px 0;text-align:center}
-    #wrapper{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;max-width:1200px;width:100%}
-    canvas{background:#111;border:1px solid #555;border-radius:8px}
-    #controls{width:100%;max-width:900px;margin-top:24px}
-    .control{display:flex;flex-direction:column;align-items:center;margin-bottom:14px}
-    input[type=range]{width:90%}
-    label span{color:var(--accent);min-width:5ch;display:inline-block}
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+    h1, .menu-button {
+      z-index: 1;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .menu-button {
+      background-color: #222;
+      border: 2px solid #00e0ff;
+      color: #00e0ff;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 1.2em;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .menu-button:hover {
+      background-color: #00e0ff;
+      color: black;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 <body>
-  <h1>Simulador de Tránsito Exoplanetario</h1>
-  <div id="wrapper">
-    <canvas id="orbitCanvas" width="450" height="450"></canvas>
-    <canvas id="curveCanvas" width="500" height="450"></canvas>
-  </div>
-  <div id="controls">
-    <div class="control">
-      <label for="xSlider">Posición horizontal del planeta (R*): <span id="xLabel">-2.00</span></label>
-      <input type="range" id="xSlider" min="-3" max="3" step="0.05" value="-2" />
-    </div>
-    <div class="control">
-      <label for="rSlider">Radio del planeta (R*): <span id="rLabel">0.10</span></label>
-      <input type="range" id="rSlider" min="0.05" max="1.0" step="0.01" value="0.10" />
-    </div>
-  </div>
+  <canvas id="starfield"></canvas>
+  <h1>Bienvenido a AstroSim</h1>
+  <button class="menu-button" onclick="location.href='transito.html'">🔭 Método de Tránsito</button>
+  <button class="menu-button" onclick="location.href='espectroscopia.html'">💨 Espectroscopía de Transmisión</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    /* ----- Parámetros base ----- */
-    const R_STAR = 1.0;
-    let R_PLANET = 0.10;
-    let planetX = -2.0;
+    const canvas = document.getElementById("starfield");
+    const ctx = canvas.getContext("2d");
+    let stars = [];
 
-    const SCALE = 80;
-    const starPx = R_STAR * SCALE;
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      stars = Array.from({ length: 300 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.5 + 0.5,
+        a: Math.random()
+      }));
+    }
 
-    /* ----- Canvas Sistema ----- */
-    const orbitCanvas = document.getElementById('orbitCanvas');
-    const ctxOrbit = orbitCanvas.getContext('2d');
-
-    // Campo estelar estático
-    const STAR_COUNT = 400;
-    const stars = Array.from({length: STAR_COUNT}, () => ({
-      x: Math.random()*orbitCanvas.width,
-      y: Math.random()*orbitCanvas.height,
-      r: Math.random()*1.5 + 0.3,
-      a: Math.random()*0.7 + 0.3
-    }));
-
-    /* ----- Curva de luz (Chart.js) ----- */
-    const curveCtx = document.getElementById('curveCanvas').getContext('2d');
-    const X_RANGE = Array.from({length: 800}, (_, i) => -3 + 6*i/799);
-
-    const lineDataset = {
-      label: 'Curva de luz',
-      data: [],
-      borderColor: '#f00',
-      borderWidth: 2,
-      showLine: true,
-      pointRadius: 0,
-      fill: false,
-      tension: 0
-    };
-
-    const pointDataset = {
-      label: 'Posición actual',
-      data: [],
-      backgroundColor: '#0af',
-      pointRadius: 6,
-      type: 'scatter'
-    };
-
-    const chart = new Chart(curveCtx, {
-      type: 'scatter',
-      data: { datasets: [lineDataset, pointDataset] },
-      options: {
-        animation: false,
-        responsive: false,
-        scales: {
-          x: {
-            type: 'linear',
-            title: { display: true, text: 'Posición X del planeta (R*)', color: '#aaa' },
-            ticks: { color: '#aaa' },
-            grid: { color: '#333' }
-          },
-          y: {
-            title: { display: true, text: 'Flujo Observado', color: '#aaa' },
-            min: 0.97,
-            max: 1.005,
-            ticks: { color: '#aaa' },
-            grid: { color: '#333' }
-          }
-        },
-        plugins: { legend: { labels: { color: '#ccc' } } }
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const star of stars) {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.r, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.a})`;
+        ctx.fill();
       }
-    });
-
-    /* ----- Funciones ----- */
-    function fluxAt(x) {
-      const d = Math.abs(x);
-      if (d < R_STAR + R_PLANET) {
-        const overlap = (R_PLANET + R_STAR - d) / (2*R_PLANET);
-        const factor = Math.max(0, Math.min(1, overlap));
-        return 1.0 - factor * (R_PLANET**2 / R_STAR**2);
-      }
-      return 1.0;
     }
 
-    function updateCurve() {
-      lineDataset.data = X_RANGE.map(x => ({ x, y: fluxAt(x) }));
-      pointDataset.data = [{ x: planetX, y: fluxAt(planetX) }];
-
-      // Ajuste dinámico del eje Y para que la curva completa se vea siempre
-      const minFlux = Math.min(...lineDataset.data.map(p => p.y));
-      chart.options.scales.y.min = Math.min(0.97, minFlux - 0.002);
-      chart.update('none');
+    function animate() {
+      drawStars();
+      requestAnimationFrame(animate);
     }
 
-    function drawSystem() {
-      ctxOrbit.clearRect(0, 0, orbitCanvas.width, orbitCanvas.height);
-
-      // fondo estrellado
-      stars.forEach(s => {
-        ctxOrbit.fillStyle = `rgba(255,255,255,${s.a})`;
-        ctxOrbit.beginPath();
-        ctxOrbit.arc(s.x, s.y, s.r, 0, 2*Math.PI);
-        ctxOrbit.fill();
-      });
-
-      const cx = orbitCanvas.width / 2;
-      const cy = orbitCanvas.height / 2;
-
-      // estrella
-      ctxOrbit.fillStyle = 'gold';
-      ctxOrbit.beginPath();
-      ctxOrbit.arc(cx, cy, starPx, 0, 2*Math.PI);
-      ctxOrbit.fill();
-
-      // planeta
-      ctxOrbit.fillStyle = '#aaa';
-      ctxOrbit.beginPath();
-      ctxOrbit.arc(cx + planetX*SCALE, cy, R_PLANET*SCALE, 0, 2*Math.PI);
-      ctxOrbit.fill();
-      ctxOrbit.strokeStyle = '#333';
-      ctxOrbit.stroke();
-    }
-
-    /* ----- Listeners ----- */
-    const xSlider = document.getElementById('xSlider');
-    const rSlider = document.getElementById('rSlider');
-
-    xSlider.addEventListener('input', () => {
-      planetX = parseFloat(xSlider.value);
-      document.getElementById('xLabel').textContent = planetX.toFixed(2);
-      drawSystem();
-      updateCurve();
-    });
-
-    rSlider.addEventListener('input', () => {
-      R_PLANET = parseFloat(rSlider.value);
-      document.getElementById('rLabel').textContent = R_PLANET.toFixed(2);
-      drawSystem();
-      updateCurve();
-    });
-
-    // Inicialización
-    drawSystem();
-    updateCurve();
+    window.addEventListener("resize", resize);
+    resize();
+    animate();
   </script>
 </body>
 </html>
