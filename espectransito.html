@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Simulador Espectro‑Tránsito (λ, R, X, Absorción)</title>
+  <style>
+    :root{--bg:#000;--fg:#fff;--accent:#0af}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+    h1{margin:20px 12px;text-align:center}
+    #wrapper{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;max-width:1400px;width:100%}
+    canvas{background:#111;border:1px solid #555;border-radius:8px}
+    #spec,#light{width:500px;height:300px}
+    #transit{width:500px;height:500px}
+    #controls{margin-top:18px;display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+    .block{background:#111;border:1px solid #555;border-radius:8px;padding:10px}
+    label{font-size:0.9rem}
+    input[type=range]{width:180px}
+    #absorbers{display:flex;flex-direction:column;gap:4px}
+    #absorbers label{color:#000}
+    #info{margin-top:6px;color:var(--accent)}
+  </style>
+</head>
+<body>
+  <h1>Simulador de Espectroscopía de Tránsito Exoplanetario</h1>
+  <div id="wrapper">
+    <canvas id="spec"></canvas>
+    <canvas id="transit"></canvas>
+    <canvas id="light"></canvas>
+  </div>
+
+  <div id="controls">
+    <div class="block">
+      <label>Posición X Planeta (R*): <span id="xVal">-0.95</span></label><br>
+      <input type="range" id="xSlider" min="-2" max="2" step="0.01" value="-0.95">
+    </div>
+    <div class="block">
+      <label>Radio Planeta (R*): <span id="rVal">0.29</span></label><br>
+      <input type="range" id="rSlider" min="0.01" max="0.5" step="0.01" value="0.29">
+    </div>
+    <div class="block">
+      <label>λ (μm): <span id="lVal">0.550</span></label><br>
+      <input type="range" id="lSlider" min="0.38" max="0.78" step="0.001" value="0.55">
+    </div>
+    <div class="block" id="absorbers"></div>
+  </div>
+  <div id="info"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+  /* ---------- Datos de absorción ---------- */
+  const BANDS={
+    H2O:{ranges:[[0.700,0.740]],strength:0.025,label:'Vapor de Agua (H₂O)',color:'blue'},
+    CH4:{ranges:[[0.750,0.780]],strength:0.020,label:'Metano (CH₄)',color:'green'},
+    Na :{ranges:[[0.580,0.600]],strength:0.035,label:'Sodio (Na)',color:'cyan'},
+    O2 :{ranges:[[0.680,0.770]],strength:0.015,label:'Oxígeno (O₂)',color:'deepskyblue'},
+    O3 :{ranges:[[0.520,0.650]],strength:0.018,label:'Ozono (O₃)',color:'fuchsia'}
+  };
+  const ACTIVE=Object.fromEntries(Object.keys(BANDS).map(k=>[k,true]));
+  const LMIN=0.38, LMAX=0.78;
+
+  /* ---------- Utilidades ---------- */
+  function smoothStep(x,a,b){
+    const t=Math.min(1,Math.max(0,(x-a)/(b-a)));
+    return t*t*(3-2*t);
+  }
+  function effectiveRadiusInc(l){
+    let inc=0, labels=[];
+    for(const [k,info] of Object.entries(BANDS)) if(ACTIVE[k]){
+      for(const [s,e] of info.ranges){
+        const st=info.strength*smoothStep(l,s,e);
+        if(st>0.001){inc+=st; labels.push(info.label); break;}
+      }
+    }
+    return {inc,labels};
+  }
+  function fluxAt(x,r,l){
+    const {inc}=effectiveRadiusInc(l);
+    const Reff=r+inc*0.5;
+    const d=Math.abs(x);
+    const Rstar=1;
+    if(d>=Rstar+Reff) return 1;
+    if(d<=Rstar-Reff) return 1-Math.pow(Reff/Rstar,2);
+    const arg1=Math.max(-1,Math.min(1,(d*d+Reff*Reff-Rstar*Rstar)/(2*d*Reff)));
+    const arg2=Math.max(-1,Math.min(1,(d*d+Rstar*Rstar-Reff*Reff)/(2*d*Rstar)));
+    const term1=Reff*Reff*Math.acos(arg1);
+    const term2=Rstar*Rstar*Math.acos(arg2);
+    const term3=0.5*Math.sqrt(Math.max(0,(-d+Reff+Rstar)*(d+Reff-Rstar)*(d-Reff+Rstar)*(d+Reff+Rstar)));
+    const occulted=term1+term2-term3;
+    return 1-occulted/(Math.PI*Rstar*Rstar);
+  }
+  function mixColors(cols){
+    if(!cols.length) return 'gray';
+    const avg=cols.reduce((a,c)=>a.map((v,i)=>v+c[i]),[0,0,0]).map(v=>v/cols.length);
+    return `rgb(${avg.map(v=>Math.round(v*255)).join(',')})`;
+  }
+  function hexToRGB(h){
+    return [parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5),16)/255];
+  }
+
+  /* ---------- Plot: Espectro ---------- */
+  const specCtx=document.getElementById('spec').getContext('2d');
+  const specData={labels:[],datasets:[{label:'R_aparente',data:[],borderColor:'#0ff',borderWidth:2,pointRadius:0}]};
+  const specChart=new Chart(specCtx,{type:'line',data:specData,options:{animation:false,responsive:false,scales:{x:{title:{text:'λ (μm)',display:true,color:'#fff'},ticks:{color:'#fff'},grid:{color:'#333'}},y:{title:{text:'R_aparente (R*)',display:true,color:'#fff'},ticks:{color:'#fff'},grid:{color:'#333'}}},plugins:{legend:{display:false}}}});
+  /* Spans de bandas */
+  const specCanvas=specCtx.canvas;
+  function drawSpans(){
+    const ctx=specCtx;
+    const w=specCanvas.width,h=specCanvas.height;
+    ctx.save();ctx.globalAlpha=0.25;
+    for(const info of Object.values(BANDS)) for(const [s,e] of info.ranges){
+      if(e<LMIN||s>LMAX) continue;
+      const xs=(Math.max(s,LMIN)-LMIN)/(LMAX-LMIN)*w;
+      const xe=(Math.min(e,LMAX)-LMIN)/(LMAX-LMIN)*w;
+      ctx.fillStyle=info.color; ctx.fillRect(xs,0,xe-xs,h);
+    }
+    ctx.restore();
+  }
+
+  /* ---------- Plot: Curva de luz ---------- */
+  const lightCtx=document.getElementById('light').getContext('2d');
+  const xRange=Array.from({length:500},(_,i)=>-3+6*i/499);
+  const lightData={labels:xRange,datasets:[{label:'Flux',data:[],borderColor:'#f00',borderWidth:2,pointRadius:0},{label:'Posición',data:[{x:-0.95,y:1}],type:'scatter',backgroundColor:'#0af',pointRadius:6}]};
+  const lightChart=new Chart(lightCtx,{type:'line',data:lightData,options:{animation:false,responsive:false,scales:{x:{title:{text:'X (R*)',display:true,color:'#fff'},ticks:{color:'#fff'},grid:{color:'#333'}},y:{title:{text:'Flux',display:true,color:'#fff'},min:0.9,max:1.01,ticks:{color:'#fff'},grid:{color:'#333'}}},plugins:{legend:{display:false}}}});
+
+  /* ---------- Canvas Transit ---------- */
+  const tCanvas=document.getElementById('transit');
+  const tCtx=tCanvas.getContext('2d');
+  const starGrad=(()=>{const g=tCtx.createRadialGradient(250,250,0,250,250,250);g.addColorStop(0,'#fffbe6');g.addColorStop(0.6,'#fcd46d');g.addColorStop(1,'#a56a00');return g;})();
+  const bgStars=Array.from({length:200},()=>({x:Math.random()*500,y:Math.random()*500}));
+  function drawTransit(x,r,l){
+    tCtx.clearRect(0,0,500,500);
+    // fondo estrellas
+    tCtx.fillStyle='#000'; tCtx.fillRect(0,0,500,500);
+    tCtx.fillStyle='#fff'; bgStars.forEach(s=>{tCtx.fillRect(s.x,s.y,1,1);});
+    // estrella
+    tCtx.fillStyle=starGrad; tCtx.beginPath(); tCtx.arc(250,250,250,0,2*Math.PI); tCtx.fill();
+    // atmósfera
+    const {inc,labels}=effectiveRadiusInc(l);
+    const atmR=(r+inc*2)*250;
+    const ringCols=labels.map(lb=>BANDS[Object.keys(BANDS).find(k=>BANDS[k].label===lb)].color).map(c=>hexToRGB(Chart.helpers.color(c).hex()));
+    tCtx.fillStyle=mixColors(ringCols);
+    tCtx.globalAlpha=0.3+inc*0.2; tCtx.beginPath(); tCtx.arc(250+ x*250,250,atmR,0,2*Math.PI); tCtx.fill(); tCtx.globalAlpha=1;
+    // planeta
+    tCtx.fillStyle='#000'; tCtx.beginPath(); tCtx.arc(250+ x*250,250,r*250,0,2*Math.PI); tCtx.fill();
+  }
+
+  /* ---------- Controls UI ---------- */
+  const xSl=document.getElementById('xSlider');
+  const rSl=document.getElementById('rSlider');
+  const lSl=document.getElementById('lSlider');
+  const xVal=document.getElementById('xVal');
+  const rVal=document.getElementById('rVal');
+  const lVal=document.getElementById('lVal');
+  const info=document.getElementById('info');
+  const absDiv=document.getElementById('absorbers');
+  for(const key of Object.keys(BANDS)){
+    const id=`chk_${key}`;
+    absDiv.innerHTML+=`<label><input type="checkbox" id="${id}" checked> ${BANDS[key].label}</label>`;
+    document.getElementById(id).addEventListener('change',e=>{ACTIVE[key]=e.target.checked;updateAll();});
+  }
+
+  function updateAll(){
+    const x=parseFloat(xSl.value), r=parseFloat(rSl.value), l=parseFloat(lSl.value);
+    xVal.textContent=x.toFixed(2); rVal.textContent=r.toFixed(2); lVal.textContent=l.toFixed(3);
+    // update transit
+    drawTransit(x,r,l);
+    // update lightcurve
+    const fluxArr=xRange.map(xx=>fluxAt(xx,r,l));
+    lightChart.data.datasets[0].data=fluxArr;
+    lightChart.data.datasets[1].data=[{x,y:fluxAt(x,r,l)}];
+    lightChart.options.scales.y.min=Math.min(...fluxArr)-0.01;
+    lightChart.update('none');
+    // update spectrum line
+    const lArr=Array.from({length:500},(_,i)=>LMIN+(LMAX-LMIN)*i/499);
+    const radiusArr=lArr.map(ll=>r+effectiveRadiusInc(ll).inc*0.5);
+    specChart.data.labels=lArr; specChart.data.datasets[0].data=radiusArr; specChart.update('none');
+    drawSpans(); // redraw spans over chart
+    // lambda vertical line using plugin annotation? simpler: draw manually
+    specChart.update('none');
+    // after chart draw, overlay vertical line
+    const ctx=specCtx; ctx.save(); ctx.strokeStyle='red'; ctx.setLineDash([6,4]); const xPix=(l-LMIN)/(LMAX-LMIN)*specCanvas.width; ctx.beginPath(); ctx.moveTo(xPix,0); ctx.lineTo(xPix,specCanvas.height); ctx.stroke(); ctx.restore();
+    // baseline horizontal line
+    ctx.save(); ctx.strokeStyle='#fff'; ctx.setLineDash([2,4]); const yPix=(Math.max(...radiusArr)-Math.min(...radiusArr))*0 + (Math.min(...radiusArr)+r*0)/1; // not used
+    ctx.restore();
+    // info text
+    const labels=effectiveRadiusInc(l).labels; info.textContent=labels.length?`Absorben: ${labels.join(', ')}`:'Absorben: Ninguno';
+  }
+
+  // Slider listeners
+  [xSl,rSl,lSl].forEach(sl=>sl.addEventListener('input',updateAll));
+
+  // init
+  updateAll();
+  </script>
+</body>
+</html>
