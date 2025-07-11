@@ -2,22 +2,33 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Espectroscopia de Tránsito Exoplanetaria</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <style>
  html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;}
  h2{margin:0;padding:6px 0 0 0;font-weight:bold;}
+ /* ========= desktop layout ========= */
  .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:60% 40%;height:90vh;}
  #spectrum{grid-column:1;grid-row:1;background:#000;}
  #lightcurve{grid-column:1;grid-row:2;background:#000;}
- #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;}
- .controls{position:fixed;bottom:0;width:100%;background:#222;display:flex;flex-wrap:wrap;justify-content:space-around;padding:4px 0;}
- .control{display:flex;flex-direction:column;margin:0 8px;font-size:0.9rem;}
+ #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;width:100%;max-width:600px;height:auto;}
+ .controls{position:fixed;bottom:0;width:100%;background:#222;display:flex;flex-wrap:wrap;justify-content:space-around;padding:4px 0;z-index:10;}
+ .control{display:flex;flex-direction:column;margin:4px 8px;font-size:0.9rem;}
  .control input[type=range]{width:160px;}
  .check-wrap{display:flex;flex-direction:column;background:#fff;border-radius:4px;padding:4px 6px;color:#000;}
  .check-wrap label{font-size:0.8rem;white-space:nowrap;}
- .absorbers-box{background:#fff;border-radius:4px;padding:4px 6px;color:#000;min-width:180px;font-size:0.9rem;}
+ .absorbers-box{background:#fff;border-radius:4px;padding:4px 6px;color:#000;min-width:160px;font-size:0.9rem;}
  .absorbers-box ul{margin:4px 0 0 16px;padding:0;}
+ /* ========= mobile layout ========= */
+ @media(max-width:640px){
+   .grid{display:flex;flex-direction:column;height:auto;gap:4px;padding-bottom:60px;}
+   #transitCanvas{order:1;align-self:center;max-width:320px;}
+   #spectrum{order:2;min-height:200px;}
+   #lightcurve{order:3;min-height:200px;}
+   .controls{position:static;flex-direction:column;align-items:flex-start;padding:6px;overflow-x:auto;}
+   .control{margin:6px 0;}
+ }
 </style>
 </head>
 <body>
@@ -69,33 +80,37 @@ const fluxesBase=Array(500).fill(1);
 Plotly.newPlot(lc,[{x:xsArr,y:fluxesBase,mode:'lines',line:{color:'red'}},{x:[0],y:[1],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[0.9,1.01],title:'Flujo',color:'#fff'}});
 /********* canvas *********/
 const cv=$('transitCanvas'),ctx=cv.getContext('2d');const stars=Array.from({length:200},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height}));
-function draw(x,r,l){
-  ctx.clearRect(0,0,cv.width,cv.height);
-  /* estrellas de fondo */
-  ctx.fillStyle='#fff';stars.forEach(s=>ctx.fillRect(s.x,s.y,1,1));
-  /* estrella */
-  const cx=cv.width/2,cy=cv.height/2,R=cv.height*0.35;
-  ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.fillStyle='lightsteelblue';ctx.fill();
-  /* atmósfera coloreada según λ */
-  const {inc,lab}=absorp(l);
-  const rp=r+inc*2; // escala visual
-  // elegir color: si hay gas activo toma el color del primer gas; si no, gris
-  let ringColor='gray';
-  if(lab.length){
-    const key=Object.keys(ABS).find(k=>ABS[k].l===lab[0]);
-    if(key) ringColor=ABS[key].c;
-  }
-  ctx.beginPath();ctx.arc(cx+x*R,cy,rp*R,0,2*Math.PI);
-  ctx.fillStyle=ringColor;
-  ctx.globalAlpha=0.3+inc*0.2;
-  ctx.fill();
-  ctx.globalAlpha=1;
-  /* planeta */
-  ctx.beginPath();ctx.arc(cx+x*R,cy,r*R,0,2*Math.PI);ctx.fillStyle='#000';ctx.fill();
-}
+function draw(x,r,l){ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#fff';stars.forEach(s=>ctx.fillRect(s.x,s.y,1,1));const cx=cv.width/2,cy=cv.height/2,R=cv.height*0.35;ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.fillStyle='lightsteelblue';ctx.fill();const {inc,lab}=absorp(l);const rp=r+inc*2;let ringColor='gray';if(lab.length){const key=Object.keys(ABS).find(k=>ABS[k].l===lab[0]);if(key) ringColor=ABS[key].c;}ctx.beginPath();ctx.arc(cx+x*R,cy,rp*R,0,2*Math.PI);ctx.fillStyle=ringColor;ctx.globalAlpha=0.3+inc*0.2;ctx.fill();ctx.globalAlpha=1;ctx.beginPath();ctx.arc(cx+x*R,cy,r*R,0,2*Math.PI);ctx.fillStyle='#000';ctx.fill();}
 /********* main update *********/
-function update(){const x=parseFloat(xs.value),r=parseFloat(rs.value),l=parseFloat(ls.value);xv.textContent=x.toFixed(2);rv.textContent=r.toFixed(2);lv.textContent=l.toFixed(3);/* espectro */const ySpec=lambdas.map(w=>r+absorp(w).inc*0.5);Plotly.react(sp,[{x:lambdas,y:ySpec,mode:'lines',line:{color:'cyan'}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},yaxis:{title:'R aparente (R*)',color:'#fff'},shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false});/* curva */const fl=xsArr.map(val=>flux(val,r,l));const minF=Math.min(...fl);Plotly.react(lc,[{x:xsArr,y:fl,mode:'lines',line:{color:'red'}},{x:[x],y:[flux(x,r,l)],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}});/* lista */const labs=absorp(l).lab;listDiv.innerHTML=labs.length?`<strong>Absorben:</strong><ul>${labs.map(t=>`<li>${t}</li>`).join('')}</ul>`:'<strong>Absorben:</strong> Ninguno';/* canvas */draw(x,r,l);} 
+function update(){
+  const x=parseFloat(xs.value),r=parseFloat(rs.value),l=parseFloat(ls.value);
+  /* valores UI */
+  xv.textContent=x.toFixed(2);
+  rv.textContent=r.toFixed(2);
+  lv.textContent=l.toFixed(3);
+  /* espectro dinámico */
+  const ySpec=lambdas.map(w=>r+absorp(w).inc*0.5);
+  Plotly.react(sp,[{x:lambdas,y:ySpec,mode:'lines',line:{color:'cyan'}}],{
+    margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
+    xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},
+    yaxis:{title:'R aparente (R*)',color:'#fff'},
+    shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false});
+  /* curva de luz */
+  const flArr=xsArr.map(val=>flux(val,r,l));
+  const minF=Math.min(...flArr);
+  Plotly.react(lc,[{x:xsArr,y:flArr,mode:'lines',line:{color:'red'}},{x:[x],y:[flux(x,r,l)],mode:'markers',marker:{color:'dodgerblue',size:8}}],{
+    margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
+    xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},
+    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}});
+  /* lista absorción */
+  const labs=absorp(l).lab;
+  listDiv.innerHTML=labs.length?`<strong>Absorben:</strong><ul>${labs.map(t=>`<li>${t}</li>`).join('')}</ul>`:'<strong>Absorben:</strong> Ninguno';
+  /* canvas */
+  draw(x,r,l);
+}
+/* listeners */
 [xs,rs,ls].forEach(el=>el.oninput=update);
+/* init */
 update();
 </script>
 </body>
