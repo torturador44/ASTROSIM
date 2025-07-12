@@ -76,6 +76,32 @@
   input[type=range]::-moz-range-track{height:14px;}
   input[type=range]::-moz-range-thumb{width:24px;height:24px;}
 }
+/* ===== Vista móvil (≤ 640 px) ===== */
+@media (max-width:640px){
+
+  /* 1-A  ▸ la cuadrícula pasa a columna */
+  .grid{
+    display:flex;              /* ya no grid */
+    flex-direction:column;     /* uno debajo del otro */
+    gap:12px;                  /* separación vertical */
+    padding-bottom:60px;       /* aire para que no tape controles */
+  }
+
+  /* 1-B  ▸ orden explícito de cada parte */
+  #spectrum{      order:1; margin:0 auto; max-width:100%;}
+  #lightcurve{    order:2; margin:0 auto; max-width:100%;}
+  #transitCanvas{ order:3; align-self:center; max-width:320px;}
+
+  /* 1-C  ▸ controles debajo, en columna */
+  .controls{
+    position:static;           /* ya no fixed */
+    flex-direction:column;
+    align-items:flex-start;
+    padding:6px;
+    overflow-x:auto;           /* scroll horizontal si hace falta */
+  }
+  .control{ margin:6px 0; }    /* espacio entre sliders */
+}
 
   </style>
 </head>
