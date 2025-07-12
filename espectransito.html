@@ -87,6 +87,7 @@
   <div id="absorbersText" class="absorbers-box"></div>
 </div>
 <script>
+const cfg = {staticPlot: true,displayModeBar: false};
 /********* datos *********/
 const MIN_L=0.38,MAX_L=0.78;
 const ABS={H2O:{r:[[0.700,0.740]],s:0.025,l:'Vapor de Agua (H₂O)',c:'blue'},CH4:{r:[[0.750,0.780]],s:0.020,l:'Metano (CH₄)',c:'green'},Na:{r:[[0.580,0.600]],s:0.035,l:'Sodio (Na)',c:'cyan'},O2:{r:[[0.680,0.770]],s:0.015,l:'Oxígeno (O₂)',c:'deepskyblue'},O3:{r:[[0.520,0.650]],s:0.018,l:'Ozono (O₃)',c:'fuchsia'}};
@@ -107,9 +108,9 @@ const lambdas=Array.from({length:500},(_,i)=>MIN_L+(MAX_L-MIN_L)*i/499);
 const xsArr=Array.from({length:500},(_,i)=>-3+6*i/499);
 const bandShapes=[];for(const k in ABS){const o=ABS[k];o.r.forEach(([a,b])=>bandShapes.push({type:'rect',xref:'x',yref:'paper',x0:a,x1:b,y0:0,y1:1,fillcolor:o.c,opacity:0.3,line:{width:0}}));}
 const lineLambda={type:'line',xref:'x',yref:'paper',y0:0,y1:1,line:{color:'red',dash:'dash',width:2}};
-Plotly.newPlot(sp,[{x:lambdas,y:Array(500).fill(1),mode:'lines',line:{color:'cyan'}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},yaxis:{title:'R aparente (R*)',color:'#fff'},shapes:[...bandShapes,{...lineLambda,x0:ls.value,x1:ls.value}],showlegend:false});
+Plotly.newPlot(sp,[{x:lambdas,y:Array(500).fill(1),mode:'lines',line:{color:'cyan'}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},yaxis:{title:'R aparente (R*)',color:'#fff'},shapes:[...bandShapes,{...lineLambda,x0:ls.value,x1:ls.value}],showlegend:false},cfg);
 const fluxesBase=Array(500).fill(1);
-Plotly.newPlot(lc,[{x:xsArr,y:fluxesBase,mode:'lines',line:{color:'red'}},{x:[0],y:[1],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[0.9,1.01],title:'Flujo',color:'#fff'}});
+Plotly.newPlot(lc,[{x:xsArr,y:fluxesBase,mode:'lines',line:{color:'red'}},{x:[0],y:[1],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[0.9,1.01],title:'Flujo',color:'#fff'}},cfg);
 /********* canvas *********/
 const cv=$('transitCanvas'),ctx=cv.getContext('2d');const stars=Array.from({length:200},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height}));
 function draw(x,r,l){ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#fff';stars.forEach(s=>ctx.fillRect(s.x,s.y,1,1));const cx=cv.width/2,cy=cv.height/2,R=cv.height*0.35;ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.fillStyle='lightsteelblue';ctx.fill();const {inc,lab}=absorp(l);const rp=r+inc*2;let ringColor='gray';if(lab.length){const key=Object.keys(ABS).find(k=>ABS[k].l===lab[0]);if(key) ringColor=ABS[key].c;}ctx.beginPath();ctx.arc(cx+x*R,cy,rp*R,0,2*Math.PI);ctx.fillStyle=ringColor;ctx.globalAlpha=0.3+inc*0.2;ctx.fill();ctx.globalAlpha=1;ctx.beginPath();ctx.arc(cx+x*R,cy,r*R,0,2*Math.PI);ctx.fillStyle='#000';ctx.fill();}
@@ -126,14 +127,14 @@ function update(){
     margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
     xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},
     yaxis:{title:'R aparente (R*)',color:'#fff'},
-    shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false});
+    shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false},cfg);
   /* curva de luz */
   const flArr=xsArr.map(val=>flux(val,r,l));
   const minF=Math.min(...flArr);
   Plotly.react(lc,[{x:xsArr,y:flArr,mode:'lines',line:{color:'red'}},{x:[x],y:[flux(x,r,l)],mode:'markers',marker:{color:'dodgerblue',size:8}}],{
     margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
     xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},
-    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}});
+    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}},cfg);
   /* lista absorción */
   const labs=absorp(l).lab;
   listDiv.innerHTML=labs.length?`<strong>Absorben:</strong><ul>${labs.map(t=>`<li>${t}</li>`).join('')}</ul>`:'<strong>Absorben:</strong> Ninguno';
