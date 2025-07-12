@@ -45,10 +45,31 @@
     border-radius: 50%;
     cursor: pointer;
     }
-
+/* === botón volver === */
+#backBtn{
+  position:fixed;
+  top:40px;      /* distancia al borde superior */
+  left:18px;     /* distancia al borde izquierdo */
+  background:#222;
+  color:#00e0ff;
+  border:2px solid #00e0ff;
+  padding:8px 14px;
+  font-size:1rem;
+  border-radius:10px;
+  cursor:pointer;
+  z-index:1000;          /* por encima de todo */
+  transition:background .3s, transform .2s;
+}
+#backBtn:hover{
+  background:#00e0ff;
+  color:#000;
+  transform:scale(1.05);
+}
   </style>
 </head>
 <body>
+  <!-- Botón regresar -->
+<button id="backBtn" onclick="location.href='index.html'">⏪ Volver al menú</button>
   <h1>Simulador de Tránsito Exoplanetario</h1>
   <div id="wrapper">
     <canvas id="orbitCanvas" width="450" height="450"></canvas>
