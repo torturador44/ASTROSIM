@@ -6,12 +6,20 @@
 <title>Espectroscopia de Tránsito Exoplanetaria</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <style>
+ /* =================== ajustes de tamaño =================== */
+ :root{
+   /* Altura máxima de cada gráfico en desktop */
+   --plot-h: 340px;
+   --plot-w: 620px;
+   --plot-offset-x: 250px;
+   --plot-offset-y: 40px;
+ }
+ /* =================== layout general =================== */
  html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;}
  h2{margin:0;padding:6px 0 0 0;font-weight:bold;}
  /* ========= desktop layout ========= */
- .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:60% 40%;height:90vh;}
- #spectrum{grid-column:1;grid-row:1;background:#000;}
- #lightcurve{grid-column:1;grid-row:2;background:#000;}
+ .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:auto auto;height:85vh;gap:8px;}
+ #spectrum,#lightcurve{background:#000;height: var(--plot-h); ; max-width:var(--plot-w); margin-left:var(--plot-offset-x); margin-top:var(--plot-offset-y);} /* << tamaño reducido */
  #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;width:100%;max-width:600px;height:auto;}
  .controls{position:fixed;bottom:0;width:100%;background:#222;display:flex;flex-wrap:wrap;justify-content:space-around;padding:4px 0;z-index:10;}
  .control{display:flex;flex-direction:column;margin:4px 8px;font-size:0.9rem;}
@@ -22,16 +30,40 @@
  .absorbers-box ul{margin:4px 0 0 16px;padding:0;}
  /* ========= mobile layout ========= */
  @media(max-width:640px){
+   :root{ --plot-h: 200px; --plot-w: 320px; --plot-offset-x: 0px; --plot-offset-y: 0px;} /* gráficos un poco más pequeños en móvil */
    .grid{display:flex;flex-direction:column;height:auto;gap:4px;padding-bottom:60px;}
    #transitCanvas{order:1;align-self:center;max-width:320px;}
-   #spectrum{order:2;min-height:200px;}
-   #lightcurve{order:3;min-height:200px;}
+   #spectrum{order:2;}
+   #lightcurve{order:3;}
    .controls{position:static;flex-direction:column;align-items:flex-start;padding:6px;overflow-x:auto;}
    .control{margin:6px 0;}
  }
+ /* === botón volver === */
+#backBtn{
+  position:fixed;
+  top:40px;      /* distancia al borde superior */
+  left:18px;     /* distancia al borde izquierdo */
+  background:#222;
+  color:#00e0ff;
+  border:2px solid #00e0ff;
+  padding:8px 14px;
+  font-size:1rem;
+  border-radius:10px;
+  cursor:pointer;
+  z-index:1000;          /* por encima de todo */
+  transition:background .3s, transform .2s;
+}
+#backBtn:hover{
+  background:#00e0ff;
+  color:#000;
+  transform:scale(1.05);
+}
+
 </style>
 </head>
 <body>
+<!-- Botón regresar -->
+<button id="backBtn" onclick="location.href='index.html'">⏪ Volver al menú</button>
 <h2 style="position:absolute;top:0;right:10px">Espectroscopia de Tránsito Exoplanetaria</h2>
 <div class="grid">
   <div id="spectrum"></div>
@@ -40,15 +72,15 @@
 </div>
 <div class="controls">
   <div class="control">
-    <label>Posición X Planeta (R*) ❯ <span id="xVal"></span></label>
+    <label>Posición X Planeta (R*): <span id="xVal"></span></label>
     <input type="range" id="xSlider" min="-2" max="2" step="0.01" value="-0.95" />
   </div>
   <div class="control">
-    <label>Radio del Planeta (R*) ❯ <span id="rVal"></span></label>
-    <input type="range" id="rSlider" min="0.01" max="0.5" step="0.01" value="0.29" />
+    <label>Radio del Planeta (R*): <span id="rVal"></span></label>
+    <input type="range" id="rSlider" min="0.01" max="1" step="0.01" value="0.29" />
   </div>
   <div class="control">
-    <label>Longitud de Onda (μm) ❯ <span id="lambdaVal"></span></label>
+    <label>Longitud de Onda (μm): <span id="lambdaVal"></span></label>
     <input type="range" id="lambdaSlider" min="0.38" max="0.78" step="0.001" value="0.55" />
   </div>
   <div class="check-wrap" id="absorberChecks"></div>
