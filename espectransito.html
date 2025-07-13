@@ -3,21 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Espectroscopia de Tránsito Exoplanetaria</title>
+<title>Espectroscopia de Tránsito Exoplanetario</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <style>
  /* =================== ajustes de tamaño =================== */
  :root{
    /* Altura máxima de cada gráfico en desktop */
    --plot-h: 260px;
+   --plot-w: 400px;
+   --plot-offset-x: 250px;
+   --plot-offset-y: 15px;
  }
  /* =================== layout general =================== */
- html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;}
+ html,body{margin:0;height:100%;background:#131313;color:#fff;font-family:Arial,Helvetica,sans-serif;}
  h2{margin:0;padding:6px 0 0 0;font-weight:bold;}
  /* ========= desktop layout ========= */
  .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:auto auto;height:85vh;gap:8px;}
- #spectrum,#lightcurve{background:#000;max-height:var(--plot-h);} /* << tamaño reducido */
- #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;width:100%;max-width:600px;height:auto;}
+ #spectrum,#lightcurve{background:#000;height: var(--plot-h); ; max-width:var(--plot-w); margin-left:var(--plot-offset-x); margin-top:var(--plot-offset-y);} /* << tamaño reducido */
+ #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;width:100%;max-width:600px;height:auto;border:2px solid #2c2c2c !important; border-radius:6px;box-shadow:0 0 4px #000 inset;}
  .controls{position:fixed;bottom:0;width:100%;background:#222;display:flex;flex-wrap:wrap;justify-content:space-around;padding:4px 0;z-index:10;}
  .control{display:flex;flex-direction:column;margin:4px 8px;font-size:0.9rem;}
  .control input[type=range]{width:160px;}
@@ -25,20 +28,72 @@
  .check-wrap label{font-size:0.8rem;white-space:nowrap;}
  .absorbers-box{background:#fff;border-radius:4px;padding:4px 6px;color:#000;min-width:160px;font-size:0.9rem;}
  .absorbers-box ul{margin:4px 0 0 16px;padding:0;}
+ /* ===== Título encima del canvas ===== */
+h2.title{
+  grid-column: 2;        /* misma columna que el canvas */
+  grid-row: 1;           /* primera fila del canvas      */
+  justify-self: center;  /* centrado horizontal          */
+  align-self: start;     /* pegado arriba                */
+
+  margin:0 0 6px 0;
+  padding:0;
+  font-size:2rem;
+  font-weight:bold;
+  color:#fff;
+}
+
  /* ========= mobile layout ========= */
  @media(max-width:640px){
-   :root{ --plot-h: 200px; } /* gráficos un poco más pequeños en móvil */
+   :root{ --plot-h: 200px; --plot-w: 320px; --plot-offset-x: 0px; --plot-offset-y: 0px;} /* gráficos un poco más pequeños en móvil */
    .grid{display:flex;flex-direction:column;height:auto;gap:4px;padding-bottom:60px;}
    #transitCanvas{order:1;align-self:center;max-width:320px;}
    #spectrum{order:2;}
-   #lightcurve{order:3;}
+   #lightcurve{order:3;border:2px solid #2c2c2c; border-radius:6px;box-shadow:0 0 4px #000 inset;}
    .controls{position:static;flex-direction:column;align-items:flex-start;padding:6px;overflow-x:auto;}
    .control{margin:6px 0;}
  }
+ /* === botón volver === */
+#backBtn{
+  position:fixed;
+  top:40px;      /* distancia al borde superior */
+  left:18px;     /* distancia al borde izquierdo */
+  background:#222;
+  color:#00e0ff;
+  border:2px solid #00e0ff;
+  padding:8px 14px;
+  font-size:1rem;
+  border-radius:10px;
+  cursor:pointer;
+  z-index:1000;          /* por encima de todo */
+  transition:background .3s, transform .2s;
+}
+#backBtn:hover{
+  background:#00e0ff;
+  color:#000;
+  transform:scale(1.05);
+}
+/* ===== pantallas intermedias (≤ 1400 px) ===== */
+@media (max-width:1400px){
+  :root{
+    --plot-w: 300px;   /* gráficos más estrechos */
+    --plot-h: 200px;   /* (opcional) más bajos   */
+    --plot-offset-x: 0px;
+    --plot-gap: 12px;
+  }
+
+  /* estrella + planeta más pequeño */
+  #transitCanvas{
+    max-width:400px;
+    width:100%;
+  }
+}
+
 </style>
 </head>
 <body>
-<h2 style="position:absolute;top:0;right:10px">Espectroscopia de Tránsito Exoplanetaria</h2>
+<!-- Botón regresar -->
+<button id="backBtn" onclick="location.href='index.html'">⏪ Volver al menú</button>
+<h2 class="title">Espectroscopia en Tránsito Exoplanetario</h2>
 <div class="grid">
   <div id="spectrum"></div>
   <div id="lightcurve"></div>
@@ -46,21 +101,22 @@
 </div>
 <div class="controls">
   <div class="control">
-    <label>Posición X Planeta (R*) ❯ <span id="xVal"></span></label>
+    <label>Posición X Planeta (R*): <span id="xVal"></span></label>
     <input type="range" id="xSlider" min="-2" max="2" step="0.01" value="-0.95" />
   </div>
   <div class="control">
-    <label>Radio del Planeta (R*) ❯ <span id="rVal"></span></label>
-    <input type="range" id="rSlider" min="0.01" max="0.5" step="0.01" value="0.29" />
+    <label>Radio del Planeta (R*): <span id="rVal"></span></label>
+    <input type="range" id="rSlider" min="0.01" max="1" step="0.01" value="0.29" />
   </div>
   <div class="control">
-    <label>Longitud de Onda (μm) ❯ <span id="lambdaVal"></span></label>
+    <label>Longitud de Onda (μm): <span id="lambdaVal"></span></label>
     <input type="range" id="lambdaSlider" min="0.38" max="0.78" step="0.001" value="0.55" />
   </div>
   <div class="check-wrap" id="absorberChecks"></div>
   <div id="absorbersText" class="absorbers-box"></div>
 </div>
 <script>
+const cfg = {staticPlot: true,displayModeBar: false};
 /********* datos *********/
 const MIN_L=0.38,MAX_L=0.78;
 const ABS={H2O:{r:[[0.700,0.740]],s:0.025,l:'Vapor de Agua (H₂O)',c:'blue'},CH4:{r:[[0.750,0.780]],s:0.020,l:'Metano (CH₄)',c:'green'},Na:{r:[[0.580,0.600]],s:0.035,l:'Sodio (Na)',c:'cyan'},O2:{r:[[0.680,0.770]],s:0.015,l:'Oxígeno (O₂)',c:'deepskyblue'},O3:{r:[[0.520,0.650]],s:0.018,l:'Ozono (O₃)',c:'fuchsia'}};
@@ -81,9 +137,9 @@ const lambdas=Array.from({length:500},(_,i)=>MIN_L+(MAX_L-MIN_L)*i/499);
 const xsArr=Array.from({length:500},(_,i)=>-3+6*i/499);
 const bandShapes=[];for(const k in ABS){const o=ABS[k];o.r.forEach(([a,b])=>bandShapes.push({type:'rect',xref:'x',yref:'paper',x0:a,x1:b,y0:0,y1:1,fillcolor:o.c,opacity:0.3,line:{width:0}}));}
 const lineLambda={type:'line',xref:'x',yref:'paper',y0:0,y1:1,line:{color:'red',dash:'dash',width:2}};
-Plotly.newPlot(sp,[{x:lambdas,y:Array(500).fill(1),mode:'lines',line:{color:'cyan'}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},yaxis:{title:'R aparente (R*)',color:'#fff'},shapes:[...bandShapes,{...lineLambda,x0:ls.value,x1:ls.value}],showlegend:false});
+Plotly.newPlot(sp,[{x:lambdas,y:Array(500).fill(1),mode:'lines',line:{color:'cyan'}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},yaxis:{title:'R aparente (R*)',color:'#fff'},shapes:[...bandShapes,{...lineLambda,x0:ls.value,x1:ls.value}],showlegend:false},cfg);
 const fluxesBase=Array(500).fill(1);
-Plotly.newPlot(lc,[{x:xsArr,y:fluxesBase,mode:'lines',line:{color:'red'}},{x:[0],y:[1],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[0.9,1.01],title:'Flujo',color:'#fff'}});
+Plotly.newPlot(lc,[{x:xsArr,y:fluxesBase,mode:'lines',line:{color:'red'}},{x:[0],y:[1],mode:'markers',marker:{color:'dodgerblue',size:8}}],{margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},yaxis:{range:[0.9,1.01],title:'Flujo',color:'#fff'},showlegend:false},cfg);
 /********* canvas *********/
 const cv=$('transitCanvas'),ctx=cv.getContext('2d');const stars=Array.from({length:200},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height}));
 function draw(x,r,l){ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#fff';stars.forEach(s=>ctx.fillRect(s.x,s.y,1,1));const cx=cv.width/2,cy=cv.height/2,R=cv.height*0.35;ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.fillStyle='lightsteelblue';ctx.fill();const {inc,lab}=absorp(l);const rp=r+inc*2;let ringColor='gray';if(lab.length){const key=Object.keys(ABS).find(k=>ABS[k].l===lab[0]);if(key) ringColor=ABS[key].c;}ctx.beginPath();ctx.arc(cx+x*R,cy,rp*R,0,2*Math.PI);ctx.fillStyle=ringColor;ctx.globalAlpha=0.3+inc*0.2;ctx.fill();ctx.globalAlpha=1;ctx.beginPath();ctx.arc(cx+x*R,cy,r*R,0,2*Math.PI);ctx.fillStyle='#000';ctx.fill();}
@@ -100,14 +156,14 @@ function update(){
     margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
     xaxis:{range:[MIN_L,MAX_L],title:'λ (μm)',color:'#fff'},
     yaxis:{title:'R aparente (R*)',color:'#fff'},
-    shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false});
+    shapes:[...bandShapes,{...lineLambda,x0:l,x1:l}],showlegend:false},cfg);
   /* curva de luz */
   const flArr=xsArr.map(val=>flux(val,r,l));
   const minF=Math.min(...flArr);
   Plotly.react(lc,[{x:xsArr,y:flArr,mode:'lines',line:{color:'red'}},{x:[x],y:[flux(x,r,l)],mode:'markers',marker:{color:'dodgerblue',size:8}}],{
     margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
     xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},
-    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}});
+    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'},showlegend:false},cfg);
   /* lista absorción */
   const labs=absorp(l).lab;
   listDiv.innerHTML=labs.length?`<strong>Absorben:</strong><ul>${labs.map(t=>`<li>${t}</li>`).join('')}</ul>`:'<strong>Absorben:</strong> Ninguno';
