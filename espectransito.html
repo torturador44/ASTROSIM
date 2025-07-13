@@ -22,8 +22,8 @@ canvas {
  html,body{margin:0;height:100%;background:#131313;color:#fff;font-family:Arial,Helvetica,sans-serif;}
  h2{margin:0;padding:6px 0 0 0;font-weight:bold;}
  /* ========= desktop layout ========= */
- .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:auto auto;height:85vh;gap:8px;}
- #spectrum,#lightcurve{background:#000;height: var(--plot-h); ; max-width:var(--plot-w); margin-left:var(--plot-offset-x); margin-top:var(--plot-offset-y);} /* << tamaño reducido */
+ .grid{display:grid;grid-template-columns:50% 50%;grid-template-rows:auto auto;height:85vh;gap: 6px;}
+ #spectrum,#lightcurve{background:#000;height: var(--plot-h); ; max-width:var(--plot-w); margin-left:var(--plot-offset-x);margin-top: calc(var(--plot-offset-y) - 10px);} /* << tamaño reducido */
  #transitCanvas{grid-column:2/3;grid-row:1/3;justify-self:center;align-self:center;background:#000;width:100%;max-width:600px;height:auto;border:2px solid #2c2c2c !important; border-radius:6px;box-shadow:0 0 4px #000 inset;}
  .controls{position:fixed;bottom:0;width:100%;background:#222;display:flex;flex-wrap:wrap;justify-content:space-around;padding:4px 0;z-index:10;}
  .control{display:flex;flex-direction:column;margin:4px 8px;font-size:0.9rem;}
@@ -76,11 +76,11 @@ h2.title{
   color:#000;
   transform:scale(1.05);
 }
-/* ===== pantallas intermedias (≤ 1400 px) ===== */
-@media (max-width:1400px){
+/* ===== pantallas intermedias (≤ 1920 px) ===== */
+@media (max-width:1520px){
   :root{
-    --plot-w: 300px;   /* gráficos más estrechos */
-    --plot-h: 200px;   /* (opcional) más bajos   */
+    --plot-w: 360px;   /* gráficos más estrechos */
+    --plot-h: 400px;   /* (opcional) más bajos   */
     --plot-offset-x: 0px;
     --plot-gap: 12px;
   }
