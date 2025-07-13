@@ -200,7 +200,7 @@
   function updateSpectralLine(lam){
     drawSpectrum();
     const x=((lam-LAM_MIN)/(LAM_MAX-LAM_MIN))*specCanvas.width;
-    sctx.strokeStyle=wavelengthToRGB(lam);
+    sctx.strokeStyle='#fff';
     sctx.lineWidth=2;
     sctx.setLineDash([6,4]);
     sctx.beginPath();
