@@ -76,6 +76,24 @@
   color: black;
   transform: scale(1.05);
 }
+#rocket {
+  position: absolute;
+  bottom: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  z-index: 0;
+  animation: flyUp 10s infinite ease-in-out;
+  opacity: 0.9;
+}
+
+@keyframes flyUp {
+  0%   { bottom: -150px; opacity: 0; }
+  30%  { opacity: 1; }
+  50%  { bottom: 50%; }
+  80%  { opacity: 1; }
+  100% { bottom: 110%; opacity: 0; }
+}
 
   </style>
 </head>
@@ -123,6 +141,7 @@
     animate();
   </script>
   <button id="manual-button" onclick="window.open('manual.pdf', '_blank')">📘 Manual de Usuario</button>
+<img src="rocket.png" id="rocket">
 
 </body>
 </html>
