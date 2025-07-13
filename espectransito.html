@@ -148,7 +148,7 @@ function update(){
   Plotly.react(lc,[{x:xsArr,y:flArr,mode:'lines',line:{color:'red'}},{x:[x],y:[flux(x,r,l)],mode:'markers',marker:{color:'dodgerblue',size:8}}],{
     margin:{l:60,r:20,t:30,b:50},paper_bgcolor:'#000',plot_bgcolor:'#000',
     xaxis:{range:[-3,3],title:'x (R*)',color:'#fff'},
-    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'}},cfg);
+    yaxis:{range:[minF-0.01,1.01],title:'Flujo',color:'#fff'},showlegend:false},cfg);
   /* lista absorción */
   const labs=absorp(l).lab;
   listDiv.innerHTML=labs.length?`<strong>Absorben:</strong><ul>${labs.map(t=>`<li>${t}</li>`).join('')}</ul>`:'<strong>Absorben:</strong> Ninguno';
