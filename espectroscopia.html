@@ -100,7 +100,9 @@
     padding:6px;
     overflow-x:auto;           /* scroll horizontal si hace falta */
   }
-  .control{ margin:6px 0; }    /* espacio entre sliders */
+  .control{ margin:6px 0; } 
+  #wrapper {
+    margin-top: 60px;} /* baja todo el contenido, excepto el título */   /* espacio entre sliders */
 }
 #starfield {
   position: fixed;
@@ -196,7 +198,7 @@
   const specCanvas=document.getElementById('specCanvas');
   const sctx=specCanvas.getContext('2d');
   const specImg=new Image();
-  specImg.src='espectro.jpg'; // asegúrate de tener la imagen en la misma carpeta
+  specImg.src='espectro.jpg'; 
   specImg.onload=()=>{ drawSpectrum(); updateSpectralLine(currentLambda); };
 
   function drawSpectrum(){
