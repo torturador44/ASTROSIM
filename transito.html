@@ -115,13 +115,16 @@
 
     const lineDataset = {
       label: 'Curva de luz',
+      type: 'line',
       data: [],
       borderColor: '#f00',
       borderWidth: 2,
       showLine: true,
       pointRadius: 0,
       fill: false,
-      tension: 0
+      tension: 0,
+      pointStyle: 'line',
+      borderJoinStyle: 'bevel'
     };
 
     const pointDataset = {
@@ -129,7 +132,8 @@
       data: [],
       backgroundColor: '#0af',
       pointRadius: 6,
-      type: 'scatter'
+      type: 'scatter',
+      pointStyle: 'circle',
     };
 
     const chart = new Chart(curveCtx, {
@@ -153,7 +157,7 @@
             grid: { color: '#333' }
           }
         },
-        plugins: { legend: { labels: { color: '#ccc' } } }
+        plugins: { legend: { labels: { color: '#ccc', usePointStyle:true,boxWidth:7,boxHeight:7 } } }
       }
     });
 
